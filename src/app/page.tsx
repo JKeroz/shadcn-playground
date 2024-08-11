@@ -192,7 +192,7 @@ export default async function Home() {
   const data = await getData()
 
   return (
-    <div id="table-container" className="container bg-background rounded-md border">
+    <div id="table-container" className="container w-[1000px] h-[800px] p-0 md:p-1 bg-background rounded-md border">
       <DataTable columns={columns} data={data} />
     </div>
   );
