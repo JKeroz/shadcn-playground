@@ -5,18 +5,12 @@ import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area"
 
 import { cn } from "@/lib/utils"
 
-type SizeType = 'rem' | 'px'
-type HeightOrWidth = 'h' | 'w' | 'max-h' | 'max-w'
-type SizeCss = `${number}${SizeType}`
-type CustomTailwindSizeCss = `${HeightOrWidth}-[${SizeCss}]`
-
 const DataTableScrollArea = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> & { 
     viewPortClassName: string
   }
 >(({ className, children, viewPortClassName, ...props }, ref) => {
-  console.log({viewPortClassName})
   return (
     <ScrollAreaPrimitive.Root
       ref={ref}
