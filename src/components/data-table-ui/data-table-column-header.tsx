@@ -6,7 +6,7 @@ import {
   CaretSortIcon,
   EyeNoneIcon,
 } from "@radix-ui/react-icons"
-import { Column } from "@tanstack/react-table"
+import { Header } from "@tanstack/react-table"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -20,19 +20,17 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ChevronLeft, ChevronRight, PinIcon, PinOff, PinOffIcon } from "lucide-react"
+import { ChevronLeft, ChevronRight, PinIcon, PinOffIcon } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 
 interface DataTableColumnHeaderProps<TData, TValue>
   extends React.HTMLAttributes<HTMLDivElement> {
-  column: Column<TData, TValue>
-  title: string
+  header: Header<TData, TValue>
 }
 
 export function DataTableColumnHeader<TData, TValue>({
-  column,
-  title,
+  header,
   className,
 }: DataTableColumnHeaderProps<TData, TValue>) {
   const [ pinColor, setPinColor] = useState("#7c3aed")
@@ -46,9 +44,9 @@ export function DataTableColumnHeader<TData, TValue>({
       setPinColor("#26a172")
     }
   }, [theme, systemTheme, setPinColor])
-
-  if (!column.getCanSort()) {
-    return <div className={cn(className)}>{title}</div>
+  
+  if (!header.column.getCanSort()) {
+    return <div className={cn(className)}>{header.column.columnDef.header?.toString()}</div>
   }
 
   return (
@@ -60,10 +58,10 @@ export function DataTableColumnHeader<TData, TValue>({
             size="sm"
             className="-ml-3 h-8 data-[state=open]:bg-accent"
           >
-            <span>{title}</span>
-            {column.getIsSorted() === "desc" ? (
+            <span>{header.column.columnDef.header?.toString()}</span>
+            {header.column.getIsSorted() === "desc" ? (
               <ArrowDownIcon className="ml-2 h-4 w-4" />
-            ) : column.getIsSorted() === "asc" ? (
+            ) : header.column.getIsSorted() === "asc" ? (
               <ArrowUpIcon className="ml-2 h-4 w-4" />
             ) : (
               <CaretSortIcon className="ml-2 h-4 w-4" />
@@ -71,21 +69,21 @@ export function DataTableColumnHeader<TData, TValue>({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
-          <DropdownMenuItem onClick={() => column.toggleSorting(false)}>
+          <DropdownMenuItem onClick={() => header.column.toggleSorting(false)}>
             <ArrowUpIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
             Asc
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => column.toggleSorting(true)}>
+          <DropdownMenuItem onClick={() => header.column.toggleSorting(true)}>
             <ArrowDownIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
             Desc
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuSub>
-            { column.getIsPinned() 
+            { header.column.getIsPinned() 
               ? 
                 (
                   <>
-                    <DropdownMenuItem onClick={() => column.pin(false)}>
+                    <DropdownMenuItem onClick={() => header.column.pin(false)}>
                       <PinOffIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
                       Unpin
                     </DropdownMenuItem>
@@ -94,30 +92,31 @@ export function DataTableColumnHeader<TData, TValue>({
               : 
                 (
                   <>
-                  <DropdownMenuSubTrigger>
-                    <PinIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
-                    Pin
-                  </DropdownMenuSubTrigger><DropdownMenuSubContent className="p-0">
-                    <DropdownMenuItem onClick={() => column.pin('left')}>
-                      <ChevronLeft className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
-                      Left
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => column.pin('right')}>
-                      <ChevronRight className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
-                      Right
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent></>
+                    <DropdownMenuSubTrigger >
+                      <PinIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
+                      Pin
+                    </DropdownMenuSubTrigger><DropdownMenuSubContent className="p-0">
+                      <DropdownMenuItem onClick={() => header.column.pin('left')}>
+                        <ChevronLeft className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
+                        Left
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => header.column.pin('right')}>
+                        <ChevronRight className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
+                        Right
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </>
                 )
           }
           </DropdownMenuSub>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => column.toggleVisibility(false)}>
+          <DropdownMenuItem onClick={() => header.column.toggleVisibility(false)}>
             <EyeNoneIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
             Hide
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      { column.getIsPinned() ? <PinIcon color={pinColor} className="h-4 w-4 absolute top-1 right-1" /> : null }
+      { header.column.getIsPinned() ? <PinIcon color={pinColor} className="h-4 w-4 absolute top-1 right-1" /> : null }
     </div>
   )
 }

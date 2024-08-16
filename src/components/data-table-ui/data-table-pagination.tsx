@@ -4,7 +4,7 @@ import {
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
 } from "@radix-ui/react-icons"
-import { type Table } from "@tanstack/react-table"
+import { PaginationState, RowSelectionState } from "@tanstack/react-table"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -14,33 +14,49 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Dispatch } from "react"
 
-interface DataTablePaginationProps<TData> {
-  table: Table<TData>
+interface DataTablePaginationProps {
+  dispatch: Dispatch<Record<string, unknown>> 
+  rowSelection: RowSelectionState
+  pagination: PaginationState
   pageSizeOptions?: number[]
+  totalCount: number
+  pageCount: number
 }
 
-export function DataTablePagination<TData>({
-  table,
-  pageSizeOptions = [10, 20, 30, 40, 50],
-}: DataTablePaginationProps<TData>) {
+export function DataTablePagination({
+  dispatch,
+  rowSelection,
+  pagination,
+  pageSizeOptions = [1, 10, 20, 30, 40, 50],
+  totalCount,
+  pageCount,
+}: DataTablePaginationProps) {
   return (
     <div className="flex w-full flex-col-reverse items-center justify-between gap-4 overflow-auto p-1 sm:flex-row sm:gap-8">
-      <div className="flex-1 whitespace-nowrap text-sm text-muted-foreground">
-        {table.getFilteredSelectedRowModel().rows.length} of{" "}
-        {table.getState().pagination.pageSize} row(s) selected.
+      <div className="flex flex-row gap-20 whitespace-nowrap text-sm text-muted-foreground">
+        <div>
+          Total {totalCount} records
+        </div>
+        <div>
+          {Object.keys(rowSelection).length} of {pagination.pageSize} row(s) selected.
+        </div>
       </div>
       <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
         <div className="flex items-center space-x-2">
           <p className="whitespace-nowrap text-sm font-medium">Rows per page</p>
           <Select
-            value={`${table.getState().pagination.pageSize}`}
+            value={`${pagination.pageSize}`}
             onValueChange={(value) => {
-              table.setPageSize(Number(value))
+              const newPageSize = Number(value);
+              const currentItemIndex = pagination.pageIndex * pagination.pageSize;
+              const newPageIndex = Math.floor(currentItemIndex / newPageSize);
+              dispatch({ type: 'onPaginationChange', updater: { pageIndex: newPageIndex, pageSize: newPageSize } })
             }}
           >
-            <SelectTrigger className="h-8 w-[4.5rem]">
-              <SelectValue placeholder={table.getState().pagination.pageSize} />
+            <SelectTrigger className="h-8 w-[4.5rem] bg-background">
+              <SelectValue placeholder={pagination.pageSize} />
             </SelectTrigger>
             <SelectContent side="top">
               {pageSizeOptions.map((pageSize) => (
@@ -52,16 +68,18 @@ export function DataTablePagination<TData>({
           </Select>
         </div>
         <div className="flex items-center justify-center text-sm font-medium">
-          Page {table.getState().pagination.pageIndex + 1} of{" "}
-          {table.getPageCount()}
+          Page {pagination.pageIndex + 1} of{" "}
+          {totalCount > 0 ? pageCount : 0 }
         </div>
         <div className="flex items-center space-x-2">
           <Button
             aria-label="Go to first page"
             variant="outline"
             className="hidden size-8 p-0 lg:flex"
-            onClick={() => table.setPageIndex(0)}
-            disabled={!table.getCanPreviousPage()}
+            onClick={() => 
+              dispatch({ type: 'onPaginationChange', updater: { ...pagination, pageIndex: 0 } })
+            }
+            disabled={pagination.pageIndex === 0}
           >
             <DoubleArrowLeftIcon className="size-4" aria-hidden="true" />
           </Button>
@@ -70,8 +88,10 @@ export function DataTablePagination<TData>({
             variant="outline"
             size="icon"
             className="size-8"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
+            onClick={() => 
+              dispatch({ type: 'onPaginationChange', updater: { ...pagination,pageIndex: pagination.pageIndex - 1 } })
+            }
+            disabled={pagination.pageIndex === 0}
           >
             <ChevronLeftIcon className="size-4" aria-hidden="true" />
           </Button>
@@ -80,8 +100,10 @@ export function DataTablePagination<TData>({
             variant="outline"
             size="icon"
             className="size-8"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
+            onClick={() => 
+              dispatch({ type: 'onPaginationChange', updater: { ...pagination,pageIndex: pagination.pageIndex + 1 } })
+            }
+            disabled={pagination.pageIndex === pageCount - 1}
           >
             <ChevronRightIcon className="size-4" aria-hidden="true" />
           </Button>
@@ -90,8 +112,10 @@ export function DataTablePagination<TData>({
             variant="outline"
             size="icon"
             className="hidden size-8 lg:flex"
-            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            disabled={!table.getCanNextPage()}
+            onClick={() => 
+              dispatch({ type: 'onPaginationChange', updater: { ...pagination, pageIndex: pageCount - 1 } })
+            }
+            disabled={pagination.pageIndex === pageCount - 1}
           >
             <DoubleArrowRightIcon className="size-4" aria-hidden="true" />
           </Button>

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 const DataTableScrollArea = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> & { 
-    viewPortClassName: string
+    viewPortClassName: string | undefined
   }
 >(({ className, children, viewPortClassName, ...props }, ref) => {
   return (

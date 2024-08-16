@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useState, type Dispatch, HTMLAttributes, useCallback, useMemo } from "react";
 import {
   CheckIcon,
 } from "lucide-react";
@@ -21,15 +21,17 @@ import {
 } from "@/components/ui/command";
 import { MixerHorizontalIcon } from "@radix-ui/react-icons";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Column } from "@tanstack/react-table";
+import { ColumnDefResolved, VisibilityState } from "@tanstack/react-table";
 
 /**
  * Props for Table view optiionscomponent
  */
 interface TableViewOptionsProps<TData>
-  extends React.HTMLAttributes<HTMLDivElement>
+  extends HTMLAttributes<HTMLDivElement>
 {
-  columns: Column<TData, unknown>[]
+  columns: ColumnDefResolved<TData, unknown>[]
+  dispatch: Dispatch<Record<string, unknown>> 
+  columnVisibilityState: VisibilityState
   /**
    * The modality of the popover. When set to true, interaction with outside elements
    * will be disabled and only popover content will be visible to screen readers.
@@ -40,13 +42,17 @@ interface TableViewOptionsProps<TData>
 
 export function TableViewOptions<TData>({
   columns,
+  dispatch,
+  columnVisibilityState,
   modalPopover = true,
   className,
 }: TableViewOptionsProps<TData> ) {
-    const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+    const filteredColumns = useMemo(() => columns.filter((column) => (!column.meta?.isUtilityColumn && (column.enableHiding === undefined || column.enableHiding === true))), [columns])
 
-    const toggleOption = (column: Column<TData>) => {
-      column.toggleVisibility(!column.getIsVisible())
+    const toggleOption = (value: Record<string, boolean>) => {
+      console.log('toggleOption', { value, columnVisibilityState })
+      dispatch({ type: 'onColumnVisibilityChange', updater: { ...columnVisibilityState, ...value } })
     };
 
     const handleTogglePopover = () => {
@@ -54,8 +60,27 @@ export function TableViewOptions<TData>({
     };
 
     const toggleAll = () => {
-      columns.map((column) => column.toggleVisibility(!column.getIsVisible()))
+      const updater = filteredColumns.reduce((acc, column) => {
+        if (typeof column.accessorKey === 'string') {
+          Object.assign(acc, { [column.accessorKey]: true })
+        }
+        return acc
+      }, {})
+      dispatch({ type: 'onColumnVisibilityChange', updater })
     };
+
+    const getIsColumnVisible = useCallback((column: ColumnDefResolved<TData, unknown>) => {
+      if (typeof column.accessorKey === 'string') {
+        if (!Object.hasOwn(columnVisibilityState, column.accessorKey)) {
+          return true
+        }
+
+        const visibilityState = columnVisibilityState[column.accessorKey]
+        return visibilityState
+      }
+
+      return false
+    }, [columnVisibilityState])
 
     return (
       <Popover
@@ -70,11 +95,10 @@ export function TableViewOptions<TData>({
             variant="outline"
             size="sm"
             className={cn(
-              "flex ml-auto h-8",
-              className
+              className ? className : "h-7 gap-1 text-sm"
             )}
           >
-            <MixerHorizontalIcon className="mr-2 size-4" />
+            <MixerHorizontalIcon className="h-3.5 w-3.5" />
             View
           </Button>
         </PopoverTrigger>
@@ -86,7 +110,6 @@ export function TableViewOptions<TData>({
             <Command>
               <CommandInput
                 placeholder="Search..."
-                // onKeyDown={handleInputKeyDown}
               />
               <CommandList>
                 <CommandEmpty>No results found.</CommandEmpty>
@@ -99,7 +122,7 @@ export function TableViewOptions<TData>({
                     <div
                       className={cn(
                         "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                        columns.every((column) => column.getIsVisible())
+                        filteredColumns.every((column) => getIsColumnVisible(column))
                           ? "bg-primary text-primary-foreground"
                           : "opacity-50 [&_svg]:invisible"
                       )}
@@ -112,27 +135,33 @@ export function TableViewOptions<TData>({
                 <CommandSeparator />
                 <ScrollArea className="h-48">
                   <CommandGroup>
-                    {columns.map((column) => {
-                      const isSelected = column.getIsVisible()
-                      return (
-                        <CommandItem
-                          key={column.id}
-                          onSelect={() => toggleOption(column)}
-                          className="cursor-pointer"
-                        >
-                          <div
-                            className={cn(
-                              "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                              isSelected
-                                ? "bg-primary text-primary-foreground"
-                                : "opacity-50 [&_svg]:invisible"
-                            )}
+                    {filteredColumns.map((column, index) => {
+                        // const columnName = column.id 
+                        //   ? column.id
+                        //   : column.header 
+                        //     ? column.header?.toString()
+                        //     : column.accessorKey
+                        const isSelected = getIsColumnVisible(column)
+                        
+                        return (
+                          <CommandItem
+                            key={index}
+                            onSelect={() => toggleOption({ [column.accessorKey]: !isSelected })}
+                            className="cursor-pointer"
                           >
-                            <CheckIcon className="h-4 w-4" />
-                          </div>
-                          <span className="capitalize">{column.id}</span>
-                        </CommandItem>
-                      );
+                            <div
+                              className={cn(
+                                "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                isSelected
+                                  ? "bg-primary text-primary-foreground"
+                                  : "opacity-50 [&_svg]:invisible"
+                              )}
+                            >
+                              <CheckIcon className="h-4 w-4" />
+                            </div>
+                            <span className="capitalize">{column.id ?? column.header?.toString()}</span>
+                          </CommandItem>
+                        );
                     })}
                   </CommandGroup>
                 </ScrollArea>
