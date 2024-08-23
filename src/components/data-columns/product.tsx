@@ -30,7 +30,7 @@ import { z } from "zod"
 import { PlusCircle } from "lucide-react";
 import { useState } from "react";
 
-const ProductSchema = z.object({
+export const ProductSchema = z.object({
   id: z.number().readonly(),
   name: z.string().min(1, { message: 'Name is required' }).max(255, { message: 'Name must be less than 255 characters' }).describe('product name'),
   description: z.string().min(1).max(255, { message: 'Description must be less than 255 characters' }).optional(),
@@ -53,6 +53,7 @@ export const columns: ColumnDef<Product>[] = [
     header: 'ID',
     accessorKey: 'id',
     enableHiding: false,
+    enableColumnFilter: false,
   },
   {
     header: 'Name',
@@ -92,43 +93,53 @@ export const columns: ColumnDef<Product>[] = [
   {
     header: 'ExtraColumn1',
     accessorKey: 'extraColumn1',
+    enableColumnFilter: false,
   },
   {
     header: 'ExtraColumn2',
     accessorKey: 'extraColumn2',
+    enableColumnFilter: false,
   },
   {
     header: 'ExtraColumn3',
-    accessorKey: 'extraColumn3',  
+    accessorKey: 'extraColumn3',
+    enableColumnFilter: false,
   },
   {
     header: 'ExtraColumn4',
-    accessorKey: 'extraColumn4',  
+    accessorKey: 'extraColumn4',
+    enableColumnFilter: false,
     
   },
   {
     header: 'ExtraColumn5',
     accessorKey: 'extraColumn5',
+    enableColumnFilter: false,
   },
   {
     header: 'ExtraColumn6',
     accessorKey: 'extraColumn6',
+    enableColumnFilter: false,
   },
   {
     header: 'ExtraColumn7',
     accessorKey: 'extraColumn7',
+    enableColumnFilter: false,
   },
   {
     header: 'ExtraColumn8',
     accessorKey: 'extraColumn8',
+    enableColumnFilter: false,
   },
   {
     header: 'ExtraColumn9',
-    accessorKey: 'extraColumn9',  
+    accessorKey: 'extraColumn9', 
+    enableColumnFilter: false, 
   },
   {
     header: 'ExtraColumn10',
     accessorKey: 'extraColumn10',
+    enableColumnFilter: false,
   }
 ]
 
@@ -145,6 +156,14 @@ export function EditProduct({ mutationFn }: EditProductProps) {
 
   const form = useForm<InsertProduct>({
     resolver: zodResolver(InsertProductSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      price: 0,
+      stock_quantity: 0,
+      category: '',
+      sku: '',
+    },
   })
   return (
     <Sheet open={isSheetOpen} onOpenChange={handleSheetToggle}>

@@ -4,7 +4,7 @@ import {
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
 } from "@radix-ui/react-icons"
-import { PaginationState, RowSelectionState } from "@tanstack/react-table"
+import { RowSelectionState } from "@tanstack/react-table"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -14,19 +14,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Dispatch } from "react"
+import { SetQueryParamsPaginationProps, QueryParamPagination } from "@/lib/validation/data-table-query-params"
 
-interface DataTablePaginationProps {
-  dispatch: Dispatch<Record<string, unknown>> 
+type DataTablePaginationProps = {
+  setPagination: (props: SetQueryParamsPaginationProps) => void 
   rowSelection: RowSelectionState
-  pagination: PaginationState
+  pagination: QueryParamPagination
   pageSizeOptions?: number[]
   totalCount: number
   pageCount: number
 }
 
 export function DataTablePagination({
-  dispatch,
+  setPagination,
   rowSelection,
   pagination,
   pageSizeOptions = [1, 10, 20, 30, 40, 50],
@@ -52,7 +52,8 @@ export function DataTablePagination({
               const newPageSize = Number(value);
               const currentItemIndex = pagination.pageIndex * pagination.pageSize;
               const newPageIndex = Math.floor(currentItemIndex / newPageSize);
-              dispatch({ type: 'onPaginationChange', updater: { pageIndex: newPageIndex, pageSize: newPageSize } })
+              
+              setPagination({ type: 'onPaginationChange', pagination: { pageIndex: newPageIndex, pageSize: newPageSize } })
             }}
           >
             <SelectTrigger className="h-8 w-[4.5rem] bg-background">
@@ -68,7 +69,7 @@ export function DataTablePagination({
           </Select>
         </div>
         <div className="flex items-center justify-center text-sm font-medium">
-          Page {pagination.pageIndex + 1} of{" "}
+          Page {pagination && pagination.pageIndex + 1} of{" "}
           {totalCount > 0 ? pageCount : 0 }
         </div>
         <div className="flex items-center space-x-2">
@@ -77,7 +78,7 @@ export function DataTablePagination({
             variant="outline"
             className="hidden size-8 p-0 lg:flex"
             onClick={() => 
-              dispatch({ type: 'onPaginationChange', updater: { ...pagination, pageIndex: 0 } })
+              setPagination({ type: 'onPaginationChange', pagination: { ...pagination, pageIndex: 0 } })
             }
             disabled={pagination.pageIndex === 0}
           >
@@ -89,7 +90,7 @@ export function DataTablePagination({
             size="icon"
             className="size-8"
             onClick={() => 
-              dispatch({ type: 'onPaginationChange', updater: { ...pagination,pageIndex: pagination.pageIndex - 1 } })
+              setPagination({ type: 'onPaginationChange', pagination: { ...pagination, pageIndex: pagination.pageIndex - 1 } })
             }
             disabled={pagination.pageIndex === 0}
           >
@@ -101,7 +102,7 @@ export function DataTablePagination({
             size="icon"
             className="size-8"
             onClick={() => 
-              dispatch({ type: 'onPaginationChange', updater: { ...pagination,pageIndex: pagination.pageIndex + 1 } })
+              setPagination({ type: 'onPaginationChange', pagination: { ...pagination,pageIndex: pagination.pageIndex + 1 } })
             }
             disabled={pagination.pageIndex === pageCount - 1}
           >
@@ -113,7 +114,7 @@ export function DataTablePagination({
             size="icon"
             className="hidden size-8 lg:flex"
             onClick={() => 
-              dispatch({ type: 'onPaginationChange', updater: { ...pagination, pageIndex: pageCount - 1 } })
+              setPagination({ type: 'onPaginationChange', pagination: { ...pagination, pageIndex: pageCount - 1 } })
             }
             disabled={pagination.pageIndex === pageCount - 1}
           >

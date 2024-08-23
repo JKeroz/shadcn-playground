@@ -4,7 +4,6 @@ import {
   File,
   Home,
   LineChart,
-  ListFilter,
   Package,
   Package2,
   PanelLeft,
@@ -36,14 +35,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
-import { Updater, functionalUpdate, PaginationState } from "@tanstack/react-table"
-import { columns, EditProduct, Product } from "@/components/data-columns/product"
+import { Tabs, TabsContent } from "@/components/ui/tabs"
+import { Updater, functionalUpdate, ColumnDefResolved } from "@tanstack/react-table"
+import { columns, EditProduct, Product, ProductSchema } from "@/components/data-columns/product"
 import { DataTable } from "@/components/data-table"
 import { TableViewOptions } from "@/components/data-table-ui/data-table-view-options"
 import { useReducer } from "react"
@@ -51,6 +45,9 @@ import { useQuery, useQueryClient, keepPreviousData, useMutation } from "@tansta
 import { usePGlite } from "@electric-sql/pglite-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { DataTablePagination } from "@/components/data-table-ui/data-table-pagination"
+import DataTableMultiFilter from "@/components/data-table-ui/data-table-multi-filter"
+import { useDataTableQueryParams } from "@/hooks/use-data-table-query-params"
+import { QueryParamFilter, QueryParamPagination } from "@/lib/validation/data-table-query-params"
 
 export function myReducer(state: Record<string, unknown>, action: { type: string, updater: Updater<Record<string, unknown>> }){
   switch (action.type) {
@@ -78,6 +75,11 @@ export function myReducer(state: Record<string, unknown>, action: { type: string
 
 export default function Dashboard() {
   const db = usePGlite()
+  const { 
+    params, 
+    setQueryParamsFilters,
+    setQueryParamsPagination
+  } = useDataTableQueryParams({ schema: ProductSchema })  
 
   const [state, dispatch] = useReducer(myReducer, { 
     pagination: {
@@ -90,7 +92,7 @@ export default function Dashboard() {
     rowSelection: {},
     columnVisibility: {} 
   })
-  
+
   const queryClient = useQueryClient()
 
   // Queries
@@ -102,13 +104,13 @@ export default function Dashboard() {
     {totalCount: number, pageCount: number, rows: any[]},
     Error,
     {totalCount: number, pageCount: number, rows: any[]},
-    [string, {pagination: PaginationState}]>({
+    [string, { pagination: QueryParamPagination, filters: QueryParamFilter[] }]>({
     initialData: {
       pageCount: 0,
       totalCount: 0,
       rows: [],
     },
-    queryKey: ['products', { pagination: state.pagination as PaginationState }], 
+    queryKey: ['products', { ...params }], 
     queryFn: async ({ queryKey }) => {
       const offset = queryKey[1].pagination.pageIndex * queryKey[1].pagination.pageSize
       const pageSize = queryKey[1].pagination.pageSize
@@ -141,16 +143,13 @@ export default function Dashboard() {
       ` 
       const values = [data.name, data.description, data.price, data.stock_quantity, data.category, data.sku]
 
-      const {rows, affectedRows} = await db.query(
+      const result = await db.query(
         query,
         values,
       )
-      console.log('mutationFn', rows, affectedRows)
+      console.log('mutationFn', result)
     }, 
-    onSuccess: () => {
-      // Invalidate and refetch
-      queryClient.invalidateQueries({ queryKey: ['products'] })
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['products'] }),
     onError: (error) => {
       console.error('mutationFn ERROR', error)
     },
@@ -259,36 +258,20 @@ export default function Dashboard() {
         <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
           <Tabs defaultValue="all">
             <div className="flex items-center">
-              <TabsList>
+              {/* <TabsList>
                 <TabsTrigger value="all">All</TabsTrigger>
                 <TabsTrigger value="active">Active</TabsTrigger>
                 <TabsTrigger value="draft">Draft</TabsTrigger>
                 <TabsTrigger value="archived" className="hidden sm:flex">
                   Archived
                 </TabsTrigger>
-              </TabsList>
+              </TabsList> */}
               <div className="ml-auto flex items-center gap-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-7 gap-1">
-                      <ListFilter className="h-3.5 w-3.5" />
-                      <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Filter
-                      </span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Filter by</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuCheckboxItem checked>
-                      Active
-                    </DropdownMenuCheckboxItem>
-                    <DropdownMenuCheckboxItem>Draft</DropdownMenuCheckboxItem>
-                    <DropdownMenuCheckboxItem>
-                      Archived
-                    </DropdownMenuCheckboxItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <DataTableMultiFilter 
+                  columns={columns as ColumnDefResolved<Product, unknown>[]}
+                  searchParamsFilters={params.filters} 
+                  setSearchParamsFilters={setQueryParamsFilters} 
+                />
                 <Button size="sm" variant="outline" className="h-7 gap-1" onClick={() => {
                   dispatch({ type: 'columnVisibilityChange', updater: { 1: true }})
                 }}>
@@ -312,7 +295,17 @@ export default function Dashboard() {
                   <DataTable 
                     data={data.rows} 
                     columns={columns} 
-                    state={state} 
+                    state={state}
+                    pagination={params.pagination}
+                    setPagination={setQueryParamsPagination}
+                    columnFilters={params.filters}
+                    setColumnFilters={setQueryParamsFilters}
+                    columnPinning={state.columnPinning}
+                    setColumnPinning={dispatch}
+                    rowSelection={state.rowSelection}
+                    setRowSelection={dispatch}
+                    columnVisibility={state.columnVisibility}
+                    setColumnVisibility={dispatch}
                     dispatch={dispatch}
                     isLoading={isLoading}
                     isFetching={isFetching}
@@ -322,9 +315,9 @@ export default function Dashboard() {
             </TabsContent>
             <div className="flex items-center">
               <DataTablePagination
-                dispatch={dispatch}
+                setPagination={setQueryParamsPagination}
                 rowSelection={state.rowSelection}
-                pagination={state.pagination}
+                pagination={params.pagination}
                 pageSizeOptions={[1, 25, 50, 100]}
                 totalCount={data.totalCount}
                 pageCount={data.pageCount}

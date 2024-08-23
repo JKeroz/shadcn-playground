@@ -1,5 +1,16 @@
 'use client'
-import { Cell, Column, ColumnDef, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { 
+  Cell, 
+  Column, 
+  ColumnDef,
+  ColumnPinningState,
+  RowSelectionState,
+  Updater,
+  VisibilityState,
+  flexRender, 
+  getCoreRowModel, 
+  useReactTable 
+} from '@tanstack/react-table';
 import {
   Table,
   TableBody,
@@ -17,14 +28,28 @@ import {
 } from "@/components/ui/context-menu"
 import { DataTableScrollArea } from '@/components/data-table-ui/data-table-scroll-area';
 import { DataTableColumnHeader } from '@/components/data-table-ui/data-table-column-header';
-import { CSSProperties, Dispatch, useCallback, useMemo } from 'react';
+import { CSSProperties, useCallback, useMemo } from 'react';
 import { Separator } from './ui/separator';
+import { 
+  SetQueryParamsPaginationProps, 
+  QueryParamPagination,
+  QueryParamFilter,
+  SetQueryParamsFiltersProps
+} from '@/lib/validation/data-table-query-params';
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
-  state: Record<string, unknown>
-  dispatch: Dispatch<Record<string, unknown>> 
+  columnVisibility: VisibilityState
+  setColumnVisibility: (props: { type: 'onColumnVisibilityChange', updater: Updater<VisibilityState> }) => void
+  pagination: QueryParamPagination
+  rowSelection: RowSelectionState
+  setRowSelection: (props: { type: 'onRowSelectionChange', updater: Updater<VisibilityState> }) => void
+  columnPinning: ColumnPinningState 
+  setColumnPinning: (props: { type: 'onColumnPinningChange', updater: Updater<ColumnPinningState> }) => void
+  setPagination: (props: SetQueryParamsPaginationProps) => void
+  columnFilters: QueryParamFilter[]
+  setColumnFilters: (props: SetQueryParamsFiltersProps) => void
   viewPortClassName?: string
   isLoading?: boolean
   isFetching?: boolean
@@ -71,8 +96,16 @@ function getCommonPinningStyles<TData>(column: Column<TData>, cell?: Cell<TData,
 export function DataTable<TData, TValue>({
   data, 
   columns,
-  state,
-  dispatch,
+  pagination,
+  setPagination,
+  columnFilters,
+  setColumnFilters,
+  columnPinning,
+  setColumnPinning,
+  rowSelection,
+  setRowSelection,
+  columnVisibility,
+  setColumnVisibility,
   isLoading,
   isFetching
 }: DataTableProps<TData, TValue>) {  
@@ -92,24 +125,32 @@ export function DataTable<TData, TValue>({
     columnResizeDirection: 'ltr',
     columnResizeMode: 'onChange',
     state: {
-      ...state,
+      // ...state,
+      pagination,
+      columnFilters,
+      rowSelection,
+      columnPinning,
+      columnVisibility
     },
     onRowSelectionChange: (updater) => {
-      dispatch({ type: 'onRowSelectionChange', updater })
+      setRowSelection({ type: 'onRowSelectionChange', updater })
     },
     onColumnPinningChange: (updater) => {
-      dispatch({ type: 'onColumnPinningChange', updater })
+      setColumnPinning({ type: 'onColumnPinningChange', updater })
     },
     onColumnVisibilityChange: (updater) => {
-      dispatch({ type: 'onColumnVisibilityChange', updater })
+      setColumnVisibility({ type: 'onColumnVisibilityChange', updater })
     },
-    onPaginationChange: (updater) => {
-      dispatch({ type: 'onPaginationChange', updater })
-    }
+    onPaginationChange: (pagination) => {
+      setPagination({ type: 'onPaginationChange', pagination })
+    },
+    // onColumnFiltersChange: (columnFilters) => {
+    //   setColumnFilters({ type: 'onColumnFiltersChange', columnFilters })
+    // }
   })
 
   const pinninStylesFn = useCallback(getCommonPinningStyles, [])
-
+  console.log('TABLE', { table })
   const headers = table.getFlatHeaders()
   const columnSizeVars = useMemo(() => {
     const colSizes: { [key: string]: number } = {}
