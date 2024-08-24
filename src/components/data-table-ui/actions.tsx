@@ -36,7 +36,7 @@ export function getDefaultColumns<TData extends {id: number}>(): ColumnDef<TData
               <DropdownMenuItem
                 onClick={() => navigator.clipboard.writeText(String(row.original.id))}
               >
-                Copy payment ID
+                Copy row ID
               </DropdownMenuItem>
               
               <DropdownMenuSeparator />

@@ -14,11 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { SetQueryParamsPaginationProps, QueryParamPagination } from "@/lib/validation/data-table-query-params"
+import { QueryParamPagination } from "@/lib/validation/data-table-query-params"
+import { TableUpdaterActionProps } from "@/components/data-table"
 
 type DataTablePaginationProps = {
-  setPagination: (props: SetQueryParamsPaginationProps) => void 
-  rowSelection: RowSelectionState
+  setPagination: (props: TableUpdaterActionProps<'pagination'>) => void 
+  rowSelection?: RowSelectionState
   pagination: QueryParamPagination
   pageSizeOptions?: number[]
   totalCount: number
@@ -39,9 +40,11 @@ export function DataTablePagination({
         <div>
           Total {totalCount} records
         </div>
-        <div>
-          {Object.keys(rowSelection).length} of {pagination.pageSize} row(s) selected.
-        </div>
+        { rowSelection && Object.keys(rowSelection).length > 0 && 
+          <div>
+            {Object.keys(rowSelection).length} of {pagination.pageSize} row(s) selected.
+          </div>
+        }
       </div>
       <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
         <div className="flex items-center space-x-2">
@@ -53,7 +56,7 @@ export function DataTablePagination({
               const currentItemIndex = pagination.pageIndex * pagination.pageSize;
               const newPageIndex = Math.floor(currentItemIndex / newPageSize);
               
-              setPagination({ type: 'onPaginationChange', pagination: { pageIndex: newPageIndex, pageSize: newPageSize } })
+              setPagination({ pagination: { pageIndex: newPageIndex, pageSize: newPageSize } })
             }}
           >
             <SelectTrigger className="h-8 w-[4.5rem] bg-background">
@@ -78,7 +81,7 @@ export function DataTablePagination({
             variant="outline"
             className="hidden size-8 p-0 lg:flex"
             onClick={() => 
-              setPagination({ type: 'onPaginationChange', pagination: { ...pagination, pageIndex: 0 } })
+              setPagination({ pagination: { ...pagination, pageIndex: 0 } })
             }
             disabled={pagination.pageIndex === 0}
           >
@@ -90,7 +93,7 @@ export function DataTablePagination({
             size="icon"
             className="size-8"
             onClick={() => 
-              setPagination({ type: 'onPaginationChange', pagination: { ...pagination, pageIndex: pagination.pageIndex - 1 } })
+              setPagination({ pagination: { ...pagination, pageIndex: pagination.pageIndex - 1 } })
             }
             disabled={pagination.pageIndex === 0}
           >
@@ -102,7 +105,7 @@ export function DataTablePagination({
             size="icon"
             className="size-8"
             onClick={() => 
-              setPagination({ type: 'onPaginationChange', pagination: { ...pagination,pageIndex: pagination.pageIndex + 1 } })
+              setPagination({ pagination: { ...pagination,pageIndex: pagination.pageIndex + 1 } })
             }
             disabled={pagination.pageIndex === pageCount - 1}
           >
@@ -114,7 +117,7 @@ export function DataTablePagination({
             size="icon"
             className="hidden size-8 lg:flex"
             onClick={() => 
-              setPagination({ type: 'onPaginationChange', pagination: { ...pagination, pageIndex: pageCount - 1 } })
+              setPagination({ pagination: { ...pagination, pageIndex: pageCount - 1 } })
             }
             disabled={pagination.pageIndex === pageCount - 1}
           >

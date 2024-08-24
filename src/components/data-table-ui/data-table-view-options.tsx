@@ -21,7 +21,8 @@ import {
 } from "@/components/ui/command";
 import { MixerHorizontalIcon } from "@radix-ui/react-icons";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ColumnDefResolved, VisibilityState } from "@tanstack/react-table";
+import { ColumnDef, VisibilityState } from "@tanstack/react-table";
+import { CustomTableState, SetTableState } from "@/components/data-table";
 
 /**
  * Props for Table view optiionscomponent
@@ -29,9 +30,9 @@ import { ColumnDefResolved, VisibilityState } from "@tanstack/react-table";
 interface TableViewOptionsProps<TData>
   extends HTMLAttributes<HTMLDivElement>
 {
-  columns: ColumnDefResolved<TData, unknown>[]
-  dispatch: Dispatch<Record<string, unknown>> 
-  columnVisibilityState: VisibilityState
+  columns: ColumnDef<TData, unknown>[]
+  setColumnVisibility: SetTableState<'columnVisibility'>
+  columnVisibilityState: CustomTableState['columnVisibility']
   /**
    * The modality of the popover. When set to true, interaction with outside elements
    * will be disabled and only popover content will be visible to screen readers.
@@ -42,17 +43,16 @@ interface TableViewOptionsProps<TData>
 
 export function TableViewOptions<TData>({
   columns,
-  dispatch,
+  setColumnVisibility,
   columnVisibilityState,
   modalPopover = true,
   className,
-}: TableViewOptionsProps<TData> ) {
+}: TableViewOptionsProps<TData> ) { 
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
     const filteredColumns = useMemo(() => columns.filter((column) => (!column.meta?.isUtilityColumn && (column.enableHiding === undefined || column.enableHiding === true))), [columns])
 
-    const toggleOption = (value: Record<string, boolean>) => {
-      console.log('toggleOption', { value, columnVisibilityState })
-      dispatch({ type: 'onColumnVisibilityChange', updater: { ...columnVisibilityState, ...value } })
+    const toggleOption = (value: VisibilityState) => {
+      setColumnVisibility({ columnVisibility: { ...value } })
     };
 
     const handleTogglePopover = () => {
@@ -60,17 +60,18 @@ export function TableViewOptions<TData>({
     };
 
     const toggleAll = () => {
-      const updater = filteredColumns.reduce((acc, column) => {
-        if (typeof column.accessorKey === 'string') {
+      const newVisibleColumns = filteredColumns.reduce((acc, column) => {
+        if ('accessorKey' in column && typeof column.accessorKey === 'string') {
           Object.assign(acc, { [column.accessorKey]: true })
         }
         return acc
-      }, {})
-      dispatch({ type: 'onColumnVisibilityChange', updater })
+      }, {} as VisibilityState)
+      setColumnVisibility({ columnVisibility: { ...newVisibleColumns } })
     };
 
-    const getIsColumnVisible = useCallback((column: ColumnDefResolved<TData, unknown>) => {
-      if (typeof column.accessorKey === 'string') {
+    const getIsColumnVisible = useCallback((column: ColumnDef<TData, unknown>) => {
+      if (!columnVisibilityState) return false
+      if ('accessorKey' in column && typeof column.accessorKey === 'string' && typeof columnVisibilityState !== 'function') {
         if (!Object.hasOwn(columnVisibilityState, column.accessorKey)) {
           return true
         }
@@ -81,6 +82,8 @@ export function TableViewOptions<TData>({
 
       return false
     }, [columnVisibilityState])
+
+    if (!columnVisibilityState) return null
 
     return (
       <Popover
@@ -136,17 +139,16 @@ export function TableViewOptions<TData>({
                 <ScrollArea className="h-48">
                   <CommandGroup>
                     {filteredColumns.map((column, index) => {
-                        // const columnName = column.id 
-                        //   ? column.id
-                        //   : column.header 
-                        //     ? column.header?.toString()
-                        //     : column.accessorKey
+                        const isAccesorKeyInColumn = 'accessorKey' in column && typeof column.accessorKey === 'string'
+                        if (!isAccesorKeyInColumn) return null
+
                         const isSelected = getIsColumnVisible(column)
+                        const key = column.accessorKey
                         
                         return (
                           <CommandItem
                             key={index}
-                            onSelect={() => toggleOption({ [column.accessorKey]: !isSelected })}
+                            onSelect={() => toggleOption({ [key]: !isSelected })}
                             className="cursor-pointer"
                           >
                             <div

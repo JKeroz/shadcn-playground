@@ -3,13 +3,11 @@ import {
   Cell, 
   Column, 
   ColumnDef,
-  ColumnPinningState,
-  RowSelectionState,
   Updater,
-  VisibilityState,
   flexRender, 
   getCoreRowModel, 
-  useReactTable 
+  useReactTable,
+  TableState
 } from '@tanstack/react-table';
 import {
   Table,
@@ -28,28 +26,58 @@ import {
 } from "@/components/ui/context-menu"
 import { DataTableScrollArea } from '@/components/data-table-ui/data-table-scroll-area';
 import { DataTableColumnHeader } from '@/components/data-table-ui/data-table-column-header';
-import { CSSProperties, useCallback, useMemo } from 'react';
-import { Separator } from './ui/separator';
-import { 
-  SetQueryParamsPaginationProps, 
-  QueryParamPagination,
-  QueryParamFilter,
-  SetQueryParamsFiltersProps
-} from '@/lib/validation/data-table-query-params';
+import { CSSProperties, Dispatch, useCallback } from 'react';
+import { Separator } from '@/components/ui/separator';
+import { QueryParamFilter } from '@/lib/validation/data-table-query-params';
+
+export type SetStateTypeEvents = 'onColumnVisibilityChange' | 'onColumnPinningChange' | 'onPaginationChange' | 'onRowSelectionChange' | 'onColumnFiltersChange'
+
+export type TableUpdaterEvent<TEvent extends SetStateTypeEvents> = {
+  type: TEvent
+}
+
+export type TableUpdaterActionProps<TKey extends keyof TableState | void = void, TUpdater = void> = 
+  TKey extends keyof TableState
+    ? TUpdater extends void 
+      ? { [K in TKey]?: Updater<TableState[K]> }
+      : { [K in TKey]?: Updater<TUpdater> }
+    : TUpdater extends void
+      ? { [K in keyof TableState]?: Updater<TableState[K]> }
+      : { [K in keyof TableState]?: Updater<TUpdater> }
+
+export type CustomTableState<TUpdaterData extends TableState = TableState> = {
+  [K in keyof TableState]?: K extends 'columnFilters' ? TUpdaterData[K] | QueryParamFilter[] : TUpdaterData[K]
+}
+
+export type TableUpdaterProps<
+  TKey extends keyof TableState | void = void, 
+  TEvent extends SetStateTypeEvents | void = void, 
+  TUpdater  = void
+> =
+  TEvent extends SetStateTypeEvents 
+      ? TUpdater extends void
+        ? TableUpdaterEvent<TEvent> & TableUpdaterActionProps<TKey>
+        : TableUpdaterEvent<TEvent> & TableUpdaterActionProps<TKey, TUpdater>
+      : TUpdater extends void
+        ? TableUpdaterActionProps<TKey>
+        : TableUpdaterActionProps<TKey, TUpdater>
+
+
+export type SetTableState<
+  TKey extends keyof TableState, 
+  TEvent extends SetStateTypeEvents | void = void,
+  TUpdater = void
+> = Dispatch<TableUpdaterProps<TKey, TEvent, TUpdater>> | ((props: TableUpdaterProps<TKey, TEvent, TUpdater>) => void)
+
+export 
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
-  columnVisibility: VisibilityState
-  setColumnVisibility: (props: { type: 'onColumnVisibilityChange', updater: Updater<VisibilityState> }) => void
-  pagination: QueryParamPagination
-  rowSelection: RowSelectionState
-  setRowSelection: (props: { type: 'onRowSelectionChange', updater: Updater<VisibilityState> }) => void
-  columnPinning: ColumnPinningState 
-  setColumnPinning: (props: { type: 'onColumnPinningChange', updater: Updater<ColumnPinningState> }) => void
-  setPagination: (props: SetQueryParamsPaginationProps) => void
-  columnFilters: QueryParamFilter[]
-  setColumnFilters: (props: SetQueryParamsFiltersProps) => void
+  state?: CustomTableState
+  setColumnVisibility?: SetTableState<'columnVisibility'> | SetTableState<'columnVisibility', 'onColumnVisibilityChange'>
+  setRowSelection?: SetTableState<'rowSelection'> | SetTableState<'rowSelection', 'onRowSelectionChange'>
+  setColumnPinning?: SetTableState<'columnPinning'> | SetTableState<'columnPinning', 'onColumnPinningChange'>
   viewPortClassName?: string
   isLoading?: boolean
   isFetching?: boolean
@@ -93,74 +121,64 @@ function getCommonPinningStyles<TData>(column: Column<TData>, cell?: Cell<TData,
   }
 }
 
-export function DataTable<TData, TValue>({
+export function DataTableControlled<TData, TValue>({
   data, 
   columns,
-  pagination,
-  setPagination,
-  columnFilters,
-  setColumnFilters,
-  columnPinning,
+  state,
   setColumnPinning,
-  rowSelection,
   setRowSelection,
-  columnVisibility,
   setColumnVisibility,
   isLoading,
   isFetching
 }: DataTableProps<TData, TValue>) {  
-  // const memoizedData = useMemo(() => data, [data]);
-  // const memoizedColumns = useMemo(() => columns, [columns]);
-
   const table = useReactTable({
     data: data ?? [],
-    columns,
+    columns: columns,
     defaultColumn: {
       minSize: 100,
       maxSize: 300,
     },
     getCoreRowModel: getCoreRowModel(),
-    // getPaginationRowModel: getPaginationRowModel(),
     manualPagination: true,
+    manualFiltering: true,
     columnResizeDirection: 'ltr',
     columnResizeMode: 'onChange',
-    state: {
-      // ...state,
-      pagination,
-      columnFilters,
-      rowSelection,
-      columnPinning,
-      columnVisibility
-    },
-    onRowSelectionChange: (updater) => {
-      setRowSelection({ type: 'onRowSelectionChange', updater })
-    },
-    onColumnPinningChange: (updater) => {
-      setColumnPinning({ type: 'onColumnPinningChange', updater })
-    },
-    onColumnVisibilityChange: (updater) => {
-      setColumnVisibility({ type: 'onColumnVisibilityChange', updater })
-    },
-    onPaginationChange: (pagination) => {
-      setPagination({ type: 'onPaginationChange', pagination })
-    },
-    // onColumnFiltersChange: (columnFilters) => {
-    //   setColumnFilters({ type: 'onColumnFiltersChange', columnFilters })
-    // }
+  })
+
+  // Set custom state to table
+  table.setOptions((prev) => {
+    if (state) {
+      if (state.rowSelection) prev.state.rowSelection = state.rowSelection
+      if (state.columnVisibility) prev.state.columnVisibility = state.columnVisibility
+      if (state.columnPinning) prev.state.columnPinning = state.columnPinning
+      if (state.columnFilters) prev.state.columnFilters = state.columnFilters
+      if (state.pagination) prev.state.pagination = state.pagination
+    }
+    
+    if (setRowSelection) prev.onRowSelectionChange = (updater) => setRowSelection({ type: 'onRowSelectionChange', rowSelection: updater })
+    // Set row visibility state managers
+    // if (columnVisibility) prev.state.columnVisibility = columnVisibility
+    if (setColumnVisibility) prev.onColumnVisibilityChange = (updater) => {
+      setColumnVisibility({ type: 'onColumnVisibilityChange', columnVisibility: updater })
+    }
+    // Set column pinning state managers
+    // if (setColumnPinning) prev.onColumnPinningChange = (updater) => setColumnPinning({ type: 'onColumnPinningChange', columnPinning: updater })
+    
+    return prev
   })
 
   const pinninStylesFn = useCallback(getCommonPinningStyles, [])
-  console.log('TABLE', { table })
-  const headers = table.getFlatHeaders()
-  const columnSizeVars = useMemo(() => {
-    const colSizes: { [key: string]: number } = {}
-    for (let i = 0; i < headers.length; i++) {
-      const header = headers[i]!
-      colSizes[`--header-${header.id}-size`] = header.getSize()
-      colSizes[`--col-${header.column.id}-size`] = header.column.getSize()
-    }
-    return colSizes
-  }, [table.getState().columnSizingInfo, table.getState().columnSizing, headers])
+
+  // const headers = table.getFlatHeaders()
+  // const columnSizeVars = useMemo(() => {
+  //   const colSizes: { [key: string]: number } = {}
+  //   for (let i = 0; i < headers.length; i++) {
+  //     const header = headers[i]!
+  //     colSizes[`--header-${header.id}-size`] = header.getSize()
+  //     colSizes[`--col-${header.column.id}-size`] = header.column.getSize()
+  //   }
+  //   return colSizes
+  // }, [table.getState().columnSizingInfo, table.getState().columnSizing, headers])
   // console.log('SIZES', { table: table.getTotalSize() })
   return (
     <div className="w-full h-full overflow-auto box-border">
@@ -170,7 +188,7 @@ export function DataTable<TData, TValue>({
       >
         <Table 
           style={{
-            ...columnSizeVars, 
+            // ...columnSizeVars, 
             width: table.getTotalSize() < 1800 ? '100%' : table.getTotalSize()
           }}
         >
@@ -224,64 +242,64 @@ export function DataTable<TData, TValue>({
                   </TableCell>
                 </TableRow>
               : table.getRowModel().rows?.length > 0
-              ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                    onClick={() => {
-                      row.toggleSelected(!row.getIsSelected()) 
-                      // // Single row selection 
-                      // table.getRowModel().rows.map((r) => r.id === row.id ? r.toggleSelected(!r.getIsSelected()) : r.toggleSelected(false))
-                    }}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      // <ContextMenu key={cell.id}>
-                      //   <ContextMenuTrigger asChild>
-                      //     {/*Add row border here --> border-r last:border-r-0 */}
-                      //     <TableCell className="" key={cell.id} style={{ ...getCommonPinningStyles(cell.column, cell) }}>
-                      //       {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      //     </TableCell>
-                      //   </ContextMenuTrigger>
-                      //   <ContextMenuContent className="w-48">
-                      //     <ContextMenuItem 
-                      //       inset
-                      //       onClick={() => row.toggleSelected(!row.getIsSelected())}
-                      //     >
-                      //       { 
-                      //         row.getIsSelected() 
-                      //         ? <>Deselect Row</>
-                      //         : <>Select Row</>
-                      //       }
-                      //       <ContextMenuShortcut>⌘K</ContextMenuShortcut>
-                      //     </ContextMenuItem>
-                      //     <ContextMenuItem 
-                      //       inset
-                      //       onClick={() => navigator.clipboard.writeText(String(cell.getValue()))}
-                      //     >
-                      //       Copy Cell Content
-                      //       {/* <ContextMenuShortcut>⌘]</ContextMenuShortcut> */}
-                      //     </ContextMenuItem>
-                      //   </ContextMenuContent>
-                      // </ContextMenu>
-                      <TableCell 
-                        className="" 
-                        key={cell.id} 
-                        style={{ ...pinninStylesFn(cell.column, cell) }}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
+                ? (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() && "selected"}
+                      onDoubleClick={() => {
+                        row.toggleSelected(!row.getIsSelected()) 
+                        // // Single row selection 
+                        // table.getRowModel().rows.map((r) => r.id === row.id ? r.toggleSelected(!r.getIsSelected()) : r.toggleSelected(false))
+                      }}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        // <ContextMenu key={cell.id}>
+                        //   <ContextMenuTrigger asChild>
+                        //     {/*Add row border here --> border-r last:border-r-0 */}
+                        //     <TableCell className="" key={cell.id} style={{ ...getCommonPinningStyles(cell.column, cell) }}>
+                        //       {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        //     </TableCell>
+                        //   </ContextMenuTrigger>
+                        //   <ContextMenuContent className="w-48">
+                        //     <ContextMenuItem 
+                        //       inset
+                        //       onClick={() => row.toggleSelected(!row.getIsSelected())}
+                        //     >
+                        //       { 
+                        //         row.getIsSelected() 
+                        //         ? <>Deselect Row</>
+                        //         : <>Select Row</>
+                        //       }
+                        //       <ContextMenuShortcut>⌘K</ContextMenuShortcut>
+                        //     </ContextMenuItem>
+                        //     <ContextMenuItem 
+                        //       inset
+                        //       onClick={() => navigator.clipboard.writeText(String(cell.getValue()))}
+                        //     >
+                        //       Copy Cell Content
+                        //       {/* <ContextMenuShortcut>⌘]</ContextMenuShortcut> */}
+                        //     </ContextMenuItem>
+                        //   </ContextMenuContent>
+                        // </ContextMenu>
+                        <TableCell 
+                          className="" 
+                          key={cell.id} 
+                          style={{ ...pinninStylesFn(cell.column, cell) }}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                )
+                : (
+                  <TableRow>
+                    <TableCell colSpan={table.getAllColumns().length} className="h-24 text-center absolute top-1/2 left-1/3 md:left-1/2">
+                      {"No results found :("}
+                    </TableCell>
                   </TableRow>
-                ))
-              )
-              : (
-                <TableRow>
-                  <TableCell colSpan={table.getAllColumns().length} className="h-24 text-center absolute top-1/2 left-1/3 md:left-1/2">
-                    {"No results found :("}
-                  </TableCell>
-                </TableRow>
-              )
+                )
             }
           </TableBody>
         </Table>

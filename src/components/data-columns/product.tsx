@@ -23,7 +23,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
-import { MutationFunction } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -75,7 +74,11 @@ export const columns: ColumnDef<Product>[] = [
         currency: "USD",
       }).format(amount)
 
-      return <div className="font-medium">{formatted}</div>
+      return (
+        <div className="font-medium">
+          {formatted}
+        </div>
+      )
     },
   },
   {
@@ -144,7 +147,7 @@ export const columns: ColumnDef<Product>[] = [
 ]
 
 interface EditProductProps {
-  mutationFn: MutationFunction
+  mutationFn: (data: InsertProduct) => Promise<void> | void
 }
 
 export function EditProduct({ mutationFn }: EditProductProps) {

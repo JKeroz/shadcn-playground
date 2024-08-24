@@ -36,41 +36,53 @@ import {
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
-import { Updater, functionalUpdate, ColumnDefResolved } from "@tanstack/react-table"
-import { columns, EditProduct, Product, ProductSchema } from "@/components/data-columns/product"
-import { DataTable } from "@/components/data-table"
+import { functionalUpdate, ColumnDefResolved } from "@tanstack/react-table"
+import { columns, EditProduct, InsertProduct, Product, ProductSchema } from "@/components/data-columns/product"
+import { CustomTableState, TableUpdaterProps, DataTableControlled } from "@/components/data-table"
 import { TableViewOptions } from "@/components/data-table-ui/data-table-view-options"
-import { useReducer } from "react"
+import { useCallback, useReducer } from "react"
 import { useQuery, useQueryClient, keepPreviousData, useMutation } from "@tanstack/react-query"
 import { usePGlite } from "@electric-sql/pglite-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { DataTablePagination } from "@/components/data-table-ui/data-table-pagination"
 import DataTableMultiFilter from "@/components/data-table-ui/data-table-multi-filter"
 import { useDataTableQueryParams } from "@/hooks/use-data-table-query-params"
-import { QueryParamFilter, QueryParamPagination } from "@/lib/validation/data-table-query-params"
+import { QueryParamFilter, QueryParamFilterSchema, QueryParamPagination } from "@/lib/validation/data-table-query-params"
 
-export function myReducer(state: Record<string, unknown>, action: { type: string, updater: Updater<Record<string, unknown>> }){
-  switch (action.type) {
-    case 'onPaginationChange':
-      const pagination = functionalUpdate(action.updater, state.pagination)
-      console.log('paginationChange', { state, pagination })
-      return { ...state, pagination }
-    case 'onRowSelectionChange':
-      const rowSelection = functionalUpdate(action.updater, state.rowSelection)
-      console.log('rowSelectionChange', { state, rowSelection })
-      return { ...state, rowSelection }
-    case 'onColumnVisibilityChange':
-      const columnVisibility = functionalUpdate(action.updater, state.columnVisibility)
-      console.log('columnVisibilityChange', { state, columnVisibility })
-      return { ...state, columnVisibility }
-    case 'onColumnPinningChange':
-      const columnPinning = functionalUpdate(action.updater, state.columnPinning)
-      console.log('columnPinningChange', { state, columnPinning })
-      return { ...state, columnPinning }
-    default:
-      console.log('state', { state, newState: functionalUpdate(action.updater, state) })
-      return state;
+export function myReducer(state: CustomTableState, action: TableUpdaterProps): CustomTableState {
+  if (!('type' in action)) return state
+
+  if (action.type === 'onRowSelectionChange' && action.rowSelection) {
+    const rowSelection = functionalUpdate(action.rowSelection, state.rowSelection ?? {})
+    // console.log('[onRowSelectionChange]', { state, rowSelection, newState: { ...state, rowSelection } })
+    return { ...state, rowSelection }
   }
+
+  if (action.type === 'onColumnPinningChange' && action.columnPinning) {
+    const columnPinning = functionalUpdate(action.columnPinning, state.columnPinning ?? {})
+    // console.log('[onColumnPinningChange]', { state, columnPinning, newState: { ...state, columnPinning } })
+    return { ...state, columnPinning }
+  }
+
+  if (action.type === 'onColumnVisibilityChange' && action.columnVisibility) {
+    const columnVisibility = functionalUpdate(action.columnVisibility, state.columnVisibility ?? {})
+    // console.log('[onColumnVisibilityChange]', { state, columnVisibility, newState: { ...state, columnVisibility } })
+    return { ...state, columnVisibility }
+  }
+
+  if (action.type === 'onPaginationChange' && action.pagination ) {
+    const pagination = functionalUpdate(action.pagination, state.pagination ?? { pageIndex: 0, pageSize: 50 })
+    // console.log('[onPaginationChange]', { state, pagination, newState: { ...state, pagination } })
+    return { ...state, pagination }
+  }
+
+  if (action.type === 'onColumnFiltersChange' && action.columnFilters) {
+    const columnFilters = functionalUpdate(action.columnFilters, state.columnFilters ?? [])
+    // console.log('[onColumnFiltersChange]', { state, columnFilters, newState: { ...state, columnFilters } })
+    return { ...state, columnFilters }
+  }
+
+  return state
 }
 
 export default function Dashboard() {
@@ -81,25 +93,34 @@ export default function Dashboard() {
     setQueryParamsPagination
   } = useDataTableQueryParams({ schema: ProductSchema })  
 
-  const [state, dispatch] = useReducer(myReducer, { 
-    pagination: {
-      pageSize: 50,
-      pageIndex: 0
-    },
-    columnPinning: {
-      left: ["actions"],
-    },
-    rowSelection: {},
-    columnVisibility: {} 
+  const [state, dispatch] = useReducer(myReducer, {
+    columnPinning: { left: ['actions'] },
   })
-
+  
   const queryClient = useQueryClient()
-
+  const getFilters = useCallback((filters: QueryParamFilter[]) => {
+    return filters.map((filter, index) => {
+      // Validate the filter using Zod
+      const parsedFilter = QueryParamFilterSchema.parse(filter);
+  
+      // Construct the SQL condition
+      let condition = `${parsedFilter.target} ${parsedFilter.filter}`;
+      
+      // Add value if the filter is not a null check
+      if (!['IS NULL', 'IS NOT NULL'].includes(parsedFilter.filter)) {
+        const value = typeof parsedFilter.value === 'string' ? `'${parsedFilter.value}'` : parsedFilter.value;
+        condition += ` ${value}`;
+      }
+      // Return the condition with the logical operator
+      return `${parsedFilter.operator} ${condition}`;
+    }).join(' ');
+  }, [])
   // Queries
   const {
     data,
     isLoading,
     isFetching,
+    error,
   } = useQuery<
     {totalCount: number, pageCount: number, rows: any[]},
     Error,
@@ -112,19 +133,24 @@ export default function Dashboard() {
     },
     queryKey: ['products', { ...params }], 
     queryFn: async ({ queryKey }) => {
+      const filters = getFilters(params.filters)
+      console.log('[FILTERS]', filters, filters.length, typeof filters)
       const offset = queryKey[1].pagination.pageIndex * queryKey[1].pagination.pageSize
       const pageSize = queryKey[1].pagination.pageSize
       const query = `
         SELECT *, COUNT(*) OVER() AS total_count
         FROM products
+        ${filters}
         LIMIT $1 OFFSET $2;
-      `;
+      `
       const values = [queryKey[1].pagination.pageSize, offset];
-      const { rows } = await db.query<Product & { total_count: number }>(query, values);
+      const querySQL = db.query<Product & { total_count: number }>(query, values);
+      console.log('[querySQL]', querySQL)
+      const { rows } = await querySQL;
       const totalCount = rows.length > 0 ? rows[0].total_count : 0;
       const pageCount = Math.ceil(totalCount / pageSize);
 
-      console.log('queryKey', {queryKey, totalCount, pageCount, rows})
+      console.log('[queryKey]', {queryKey, totalCount, pageCount, rows, filters})
       return {
         totalCount,
         pageCount,
@@ -133,10 +159,10 @@ export default function Dashboard() {
     }, 
     placeholderData: keepPreviousData
   })
-
+  console.log('[queryData]', { data, isLoading, isFetching, error })
   // Mutations
   const { mutate } = useMutation({
-    mutationFn: async (data: Pick<Product, 'name' | 'description' | 'price' | 'stock_quantity' | 'category' | 'sku'>) => {
+    mutationFn: async (data: InsertProduct) => {
       const query = `
         INSERT INTO products (name, description, price, stock_quantity, category, sku) 
         VALUES ($1, $2, $3, $4, $5, $6);
@@ -273,40 +299,42 @@ export default function Dashboard() {
                   setSearchParamsFilters={setQueryParamsFilters} 
                 />
                 <Button size="sm" variant="outline" className="h-7 gap-1" onClick={() => {
-                  dispatch({ type: 'columnVisibilityChange', updater: { 1: true }})
+                  // dispatch({ type: 'onColumnVisibilityChange', columnVisibility: { 1: true }})
                 }}>
                   <File className="h-3.5 w-3.5" />
                   <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                     Export
                   </span>
                 </Button>
-                <TableViewOptions 
-                  className="h-7 gap-1" 
-                  columns={columns} 
-                  dispatch={dispatch} 
-                  columnVisibilityState={state.columnVisibility}
-                />
-                <EditProduct mutationFn={mutate} />
+                {
+                  state.columnVisibility && 
+                  <TableViewOptions 
+                    className="h-7 gap-1" 
+                    columns={columns} 
+                    setColumnVisibility={dispatch} 
+                    columnVisibilityState={state.columnVisibility}
+                  />
+                }
+                
+                <EditProduct mutationFn={(data) => mutate(data)}/>
               </div>
             </div>
             <TabsContent value="all" className="flex">
               <Card className="">
                 <CardContent className="w-[90vw] md:w-[85vw] lg:w-[90vw] xl:w-[93vw] 2xl:w-[95vw] p-1">
-                  <DataTable 
+                  <DataTableControlled<Product, unknown> 
                     data={data.rows} 
-                    columns={columns} 
-                    state={state}
-                    pagination={params.pagination}
-                    setPagination={setQueryParamsPagination}
-                    columnFilters={params.filters}
-                    setColumnFilters={setQueryParamsFilters}
-                    columnPinning={state.columnPinning}
+                    columns={columns}
+                    state={{
+                      pagination: params.pagination,
+                      columnFilters: params.filters,
+                      columnPinning: state.columnPinning,
+                      rowSelection: state.rowSelection,
+                      columnVisibility: state.columnVisibility,
+                    }}
                     setColumnPinning={dispatch}
-                    rowSelection={state.rowSelection}
                     setRowSelection={dispatch}
-                    columnVisibility={state.columnVisibility}
                     setColumnVisibility={dispatch}
-                    dispatch={dispatch}
                     isLoading={isLoading}
                     isFetching={isFetching}
                   />

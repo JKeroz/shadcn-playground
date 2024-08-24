@@ -1,10 +1,9 @@
+import { SetTableState } from '@/components/data-table';
 import { 
   QueryParamFilter, 
-  SetQueryParamsPaginationProps, 
   parseQueryParamsFilters, 
   parseQueryParamsPagination, 
-  QueryParamPagination, 
-  SetQueryParamsFiltersProps
+  QueryParamPagination,
 } from '@/lib/validation/data-table-query-params';
 import { parseAsJson, useQueryStates } from 'nuqs'
 import { useCallback } from "react"
@@ -31,17 +30,19 @@ export function useDataTableQueryParams({
     }
   )
 
-  const setQueryParamsFilters = useCallback(({ columnFilters }: SetQueryParamsFiltersProps) => {
+  const setQueryParamsFilters = useCallback<SetTableState<'columnFilters', void, QueryParamFilter[]>>(({ columnFilters }) => {
+    if (!columnFilters) return
     setParams((prev) => {
-      if (!prev) return typeof columnFilters === 'function' ? { filters: columnFilters(prev) } : { filters:columnFilters }
-      return typeof columnFilters === 'function' ? { filters: columnFilters(prev.filters) } : { ...prev, filters: columnFilters }
+      if (typeof columnFilters === 'function') return { ...prev, filters: [...columnFilters(prev.filters)] }
+      return { ...prev, filters: [...columnFilters] }
     })
   }, [setParams])
 
-  const setQueryParamsPagination = useCallback(({ pagination }: SetQueryParamsPaginationProps) => {
+  const setQueryParamsPagination = useCallback<SetTableState<'pagination'>>(({ pagination }) => {
+    if (!pagination) return
     setParams((prev) => {
-      if (!prev) return typeof pagination === 'function' ? { pagination: pagination(prev) } : { pagination }
-      return typeof pagination === 'function' ? { pagination: pagination(prev.pagination) } : { ...prev, pagination }
+      if (typeof pagination === 'function') return { ...prev, pagination: pagination(prev.pagination) }
+      return { ...prev, pagination } 
     })
   }, [setParams])
   

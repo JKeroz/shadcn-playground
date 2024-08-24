@@ -9,13 +9,14 @@ import { PlusIcon, XIcon, FilterIcon, FilterXIcon } from 'lucide-react'
 import { type QueryParamFilter } from '@/lib/validation/data-table-query-params'
 import { ColumnDefResolved } from '@tanstack/react-table'
 import { DEFAULT_COMPARISON_OPERATORS, DEFAULT_LOGICAL_OPERATORS } from '@/lib/validation/sql-operators'
+import { SetTableState } from '@/components/data-table'
 
 type Filter = QueryParamFilter & { id: number }
 
 type DataTableFiltersProps<TData> = {
   columns: ColumnDefResolved<TData, unknown>[]
   searchParamsFilters: QueryParamFilter[] | null
-  setSearchParamsFilters: (filters: QueryParamFilter[]) => void
+  setSearchParamsFilters: SetTableState<'columnFilters', void, QueryParamFilter[]>
 }
 
 export default function DataTableFilters<TData>({
@@ -51,11 +52,7 @@ export default function DataTableFilters<TData>({
   }
 
   const applyFilters = () => {
-    const sqlQuery = filters.map((filter, index) => {
-      return `${index === 0 ? 'WHERE' : filter.operator} ${filter.target} ${filter.filter} '${filter.value}'`
-    }).join(' ')
-    console.log('Applying SQL-like filters:', sqlQuery)
-    setSearchParamsFilters(filters.map(({ operator, target, filter, value }) => ({ operator, target, filter, value })))
+    setSearchParamsFilters({ columnFilters: filters })
     setOpen(false)
   }
 
