@@ -174,7 +174,7 @@ export default function DataTableFilters<TData>({
                   <SelectTrigger className="h-8 w-[90px] text-xs">
                     <SelectValue placeholder="Op" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent align='center'>
                     {logicalOperators.map(({ name }) => (
                       <SelectItem key={name} value={name}>{name}</SelectItem>
                     ))}
@@ -187,7 +187,7 @@ export default function DataTableFilters<TData>({
                   <SelectTrigger className="h-8 w-[90px] text-xs">
                     <SelectValue placeholder="Column" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent align='center'>
                     {allowedColumns.map((column) => {
                       if (!('accessorKey' in column) || typeof column.accessorKey !== 'string') return null
 
@@ -204,7 +204,7 @@ export default function DataTableFilters<TData>({
                   <SelectTrigger className="h-8 w-[70px] text-xs">
                     <SelectValue placeholder="Filter" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent align='center'>
                     {comparisonOperators.map(({ name, description }) => (
                       <SelectItem key={name} value={name}>{description ?? name}</SelectItem>
                     ))}

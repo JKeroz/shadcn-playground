@@ -8,6 +8,7 @@ import {
   useReactTable,
   TableState,
   TableOptions,
+  functionalUpdate,
 } from '@tanstack/react-table';
 import {
   Table,
@@ -61,8 +62,6 @@ export type SetTableState<
   TUpdater = void
 > = Dispatch<TableUpdaterProps<TKey, TEvent, TUpdater>> | ((props: TableUpdaterProps<TKey, TEvent, TUpdater>) => void)
 
-export 
-
 interface DataTableProps<TData, TValue> {
   columns: TableOptions<TData>['columns']
   data: TData[]
@@ -77,8 +76,38 @@ interface DataTableProps<TData, TValue> {
   isFetching?: boolean
 }
 
+export function dataTableStateReducer(state: CustomTableState, action: TableUpdaterProps): CustomTableState {
+  if (!('type' in action)) return state
+
+  if (action.type === 'onRowSelectionChange' && action.rowSelection) {
+    const rowSelection = functionalUpdate(action.rowSelection, state.rowSelection ?? {})
+    return { ...state, rowSelection }
+  }
+
+  if (action.type === 'onColumnPinningChange' && action.columnPinning) {
+    const columnPinning = functionalUpdate(action.columnPinning, state.columnPinning ?? {})
+    return { ...state, columnPinning }
+  }
+
+  if (action.type === 'onColumnVisibilityChange' && action.columnVisibility) {
+    const columnVisibility = functionalUpdate(action.columnVisibility, state.columnVisibility ?? {})
+    return { ...state, columnVisibility }
+  }
+
+  if (action.type === 'onPaginationChange' && action.pagination ) {
+    const pagination = functionalUpdate(action.pagination, state.pagination ?? { pageIndex: 0, pageSize: 50 })
+    return { ...state, pagination }
+  }
+
+  if (action.type === 'onColumnFiltersChange' && action.columnFilters) {
+    const columnFilters = functionalUpdate(action.columnFilters, state.columnFilters ?? [])
+    return { ...state, columnFilters }
+  }
+
+  return state
+}
+
 function getCommonPinningStyles<TData>(column: Column<TData>, cell?: Cell<TData, unknown>): CSSProperties {
-  // console.log('COLUMN', { column: column.id, size: column.getSize(), minSize: column.columnDef.minSize, maxSize: column.columnDef.maxSize })
   const isPinned = column.getIsPinned()
   const isUtilityColumn = column.columnDef.meta && 'isUtilityColumn' in column.columnDef.meta
   const isLastLeftPinnedColumn =
@@ -169,7 +198,6 @@ export function DataTableControlled<TData, TValue>({
   //   }
   //   return colSizes
   // }, [table.getState().columnSizingInfo, table.getState().columnSizing, headers])
-  // console.log('SIZES', { table: table.getTotalSize() })
   return (
     <div className="w-full h-full overflow-auto box-border">
       <DataTableScrollArea 

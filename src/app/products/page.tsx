@@ -28,9 +28,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
-import { functionalUpdate } from "@tanstack/react-table"
 import { getProductColumns, EditProduct, InsertProduct, Product, ProductSchema } from "@/components/data-columns/product"
-import { CustomTableState, TableUpdaterProps, DataTableControlled } from "@/components/data-table"
+import { DataTableControlled, dataTableStateReducer } from "@/components/data-table"
 import { TableViewOptions } from "@/components/data-table-ui/data-table-view-options"
 import { useCallback, useReducer } from "react"
 import { useQuery, useQueryClient, keepPreviousData, useMutation } from "@tanstack/react-query"
@@ -40,42 +39,6 @@ import { DataTablePagination } from "@/components/data-table-ui/data-table-pagin
 import DataTableMultiFilter from "@/components/data-table-ui/data-table-multi-filter"
 import { QueryParamFilter, QueryParamFilterSchema, QueryParamPagination, useDataTableQueryParams } from "@/hooks/use-data-table-query-params"
 
-export function myReducer(state: CustomTableState, action: TableUpdaterProps): CustomTableState {
-  if (!('type' in action)) return state
-
-  if (action.type === 'onRowSelectionChange' && action.rowSelection) {
-    const rowSelection = functionalUpdate(action.rowSelection, state.rowSelection ?? {})
-    // console.log('[onRowSelectionChange]', { state, rowSelection, newState: { ...state, rowSelection } })
-    return { ...state, rowSelection }
-  }
-
-  if (action.type === 'onColumnPinningChange' && action.columnPinning) {
-    const columnPinning = functionalUpdate(action.columnPinning, state.columnPinning ?? {})
-    // console.log('[onColumnPinningChange]', { state, columnPinning, newState: { ...state, columnPinning } })
-    return { ...state, columnPinning }
-  }
-
-  if (action.type === 'onColumnVisibilityChange' && action.columnVisibility) {
-    const columnVisibility = functionalUpdate(action.columnVisibility, state.columnVisibility ?? {})
-    // console.log('[onColumnVisibilityChange]', { state, columnVisibility, newState: { ...state, columnVisibility } })
-    return { ...state, columnVisibility }
-  }
-
-  if (action.type === 'onPaginationChange' && action.pagination ) {
-    const pagination = functionalUpdate(action.pagination, state.pagination ?? { pageIndex: 0, pageSize: 50 })
-    // console.log('[onPaginationChange]', { state, pagination, newState: { ...state, pagination } })
-    return { ...state, pagination }
-  }
-
-  if (action.type === 'onColumnFiltersChange' && action.columnFilters) {
-    const columnFilters = functionalUpdate(action.columnFilters, state.columnFilters ?? [])
-    // console.log('[onColumnFiltersChange]', { state, columnFilters, newState: { ...state, columnFilters } })
-    return { ...state, columnFilters }
-  }
-
-  return state
-}
-
 export default function Dashboard() {
   const db = usePGlite()
   const { 
@@ -84,7 +47,7 @@ export default function Dashboard() {
     setQueryParamsPagination
   } = useDataTableQueryParams({ schema: ProductSchema })  
 
-  const [state, dispatch] = useReducer(myReducer, {
+  const [state, dispatch] = useReducer(dataTableStateReducer, {
     columnPinning: { left: ['actions'] },
     columnVisibility: {},
     rowSelection: {},
@@ -127,7 +90,6 @@ export default function Dashboard() {
     queryKey: ['products', { ...params }], 
     queryFn: async ({ queryKey }) => {
       const filters = getFilters(params.filters)
-      console.log('[FILTERS]', filters, filters.length, typeof filters)
       const offset = queryKey[1].pagination.pageIndex * queryKey[1].pagination.pageSize
       const pageSize = queryKey[1].pagination.pageSize
       const query = `
@@ -138,7 +100,6 @@ export default function Dashboard() {
       `
       const values = [queryKey[1].pagination.pageSize, offset];
       const querySQL = db.query<Product & { total_count: number }>(query, values);
-      console.log('[querySQL]', querySQL)
       const { rows } = await querySQL;
       const totalCount = rows.length > 0 ? rows[0].total_count : 0;
       const pageCount = Math.ceil(totalCount / pageSize);
@@ -152,7 +113,6 @@ export default function Dashboard() {
     }, 
     placeholderData: keepPreviousData
   })
-  console.log('[queryData]', { data, isLoading, isFetching, error })
   // Mutations
   const { mutate } = useMutation({
     mutationFn: async (data: InsertProduct) => {

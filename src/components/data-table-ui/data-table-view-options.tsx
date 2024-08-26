@@ -31,7 +31,7 @@ interface TableViewOptionsProps<TData>
   extends HTMLAttributes<HTMLDivElement>
 {
   columns: TableOptions<TData>['columns']
-  setColumnVisibility: SetTableState<'columnVisibility'>
+  setColumnVisibility: SetTableState<'columnVisibility', 'onColumnVisibilityChange'>
   columnVisibilityState: CustomTableState['columnVisibility']
   /**
    * The modality of the popover. When set to true, interaction with outside elements
@@ -52,7 +52,7 @@ export function TableViewOptions<TData>({
     const filteredColumns = useMemo(() => columns.filter((column) => (column.enableHiding === undefined || column.enableHiding === true)), [columns])
 
     const toggleOption = (value: VisibilityState) => {
-      setColumnVisibility({ columnVisibility: { ...value } })
+      setColumnVisibility({ type: 'onColumnVisibilityChange', columnVisibility: { ...value } })
     };
 
     const handleTogglePopover = () => {
@@ -66,7 +66,7 @@ export function TableViewOptions<TData>({
         }
         return acc
       }, {} as VisibilityState)
-      setColumnVisibility({ columnVisibility: { ...newVisibleColumns } })
+      setColumnVisibility({ type: 'onColumnVisibilityChange', columnVisibility: { ...newVisibleColumns } })
     };
 
     const getIsColumnVisible = useCallback((column: ColumnDef<TData, unknown>) => {
