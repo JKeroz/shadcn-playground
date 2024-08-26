@@ -68,7 +68,7 @@ const zodKeys = <T extends z.ZodTypeAny>(schema: T): string[] => {
 };
 
 type useDataTableQueryParamsProps = {
-  schema: z.ZodTypeAny
+  schema?: z.ZodTypeAny
   defaultFilters?: QueryParamFilter[]
   defaultPagination?: QueryParamPagination
 }
