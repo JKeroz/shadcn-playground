@@ -4,7 +4,7 @@ import {
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
 } from "@radix-ui/react-icons"
-import { RowSelectionState } from "@tanstack/react-table"
+import { RowSelectionState, PaginationState } from "@tanstack/react-table"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -14,13 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { QueryParamPagination } from "@/lib/validation/data-table-query-params"
 import { TableUpdaterActionProps } from "@/components/data-table"
 
 type DataTablePaginationProps = {
   setPagination: (props: TableUpdaterActionProps<'pagination'>) => void 
   rowSelection?: RowSelectionState
-  pagination: QueryParamPagination
+  pagination: PaginationState
   pageSizeOptions?: number[]
   totalCount: number
   pageCount: number

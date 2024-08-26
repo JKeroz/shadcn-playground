@@ -25,19 +25,11 @@ import {
   Card,
   CardContent,
 } from "@/components/ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
-import { functionalUpdate, ColumnDefResolved } from "@tanstack/react-table"
-import { columns, EditProduct, InsertProduct, Product, ProductSchema } from "@/components/data-columns/product"
+import { functionalUpdate } from "@tanstack/react-table"
+import { getProductColumns, EditProduct, InsertProduct, Product, ProductSchema } from "@/components/data-columns/product"
 import { CustomTableState, TableUpdaterProps, DataTableControlled } from "@/components/data-table"
 import { TableViewOptions } from "@/components/data-table-ui/data-table-view-options"
 import { useCallback, useReducer } from "react"
@@ -46,8 +38,7 @@ import { usePGlite } from "@electric-sql/pglite-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { DataTablePagination } from "@/components/data-table-ui/data-table-pagination"
 import DataTableMultiFilter from "@/components/data-table-ui/data-table-multi-filter"
-import { useDataTableQueryParams } from "@/hooks/use-data-table-query-params"
-import { QueryParamFilter, QueryParamFilterSchema, QueryParamPagination } from "@/lib/validation/data-table-query-params"
+import { QueryParamFilter, QueryParamFilterSchema, QueryParamPagination, useDataTableQueryParams } from "@/hooks/use-data-table-query-params"
 
 export function myReducer(state: CustomTableState, action: TableUpdaterProps): CustomTableState {
   if (!('type' in action)) return state
@@ -95,6 +86,8 @@ export default function Dashboard() {
 
   const [state, dispatch] = useReducer(myReducer, {
     columnPinning: { left: ['actions'] },
+    columnVisibility: {},
+    rowSelection: {},
   })
   
   const queryClient = useQueryClient()
@@ -294,13 +287,11 @@ export default function Dashboard() {
               </TabsList> */}
               <div className="ml-auto flex items-center gap-2">
                 <DataTableMultiFilter 
-                  columns={columns as ColumnDefResolved<Product, unknown>[]}
-                  searchParamsFilters={params.filters} 
-                  setSearchParamsFilters={setQueryParamsFilters} 
+                  columns={getProductColumns()}
+                  filters={params.filters} 
+                  setFilters={setQueryParamsFilters} 
                 />
-                <Button size="sm" variant="outline" className="h-7 gap-1" onClick={() => {
-                  // dispatch({ type: 'onColumnVisibilityChange', columnVisibility: { 1: true }})
-                }}>
+                <Button size="sm" variant="outline" className="h-7 gap-1">
                   <File className="h-3.5 w-3.5" />
                   <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                     Export
@@ -310,7 +301,7 @@ export default function Dashboard() {
                   state.columnVisibility && 
                   <TableViewOptions 
                     className="h-7 gap-1" 
-                    columns={columns} 
+                    columns={getProductColumns()} 
                     setColumnVisibility={dispatch} 
                     columnVisibilityState={state.columnVisibility}
                   />
@@ -324,14 +315,8 @@ export default function Dashboard() {
                 <CardContent className="w-[90vw] md:w-[85vw] lg:w-[90vw] xl:w-[93vw] 2xl:w-[95vw] p-1">
                   <DataTableControlled<Product, unknown> 
                     data={data.rows} 
-                    columns={columns}
-                    state={{
-                      pagination: params.pagination,
-                      columnFilters: params.filters,
-                      columnPinning: state.columnPinning,
-                      rowSelection: state.rowSelection,
-                      columnVisibility: state.columnVisibility,
-                    }}
+                    columns={getProductColumns()}
+                    state={state}
                     setColumnPinning={dispatch}
                     setRowSelection={dispatch}
                     setColumnVisibility={dispatch}

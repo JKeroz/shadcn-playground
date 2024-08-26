@@ -1,7 +1,7 @@
 "use client"
 
-import { ColumnDef } from "@tanstack/react-table"
-import { getDefaultColumns } from "../data-table-ui/actions";
+import { createColumnHelper } from "@tanstack/react-table"
+import { getActionColumn } from "@/components/data-table-ui/actions";
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -39,6 +39,11 @@ export const ProductSchema = z.object({
   sku: z.string().min(1, { message: 'SKU is required' }).max(20, { message: 'SKU must be less than 20 characters' }),
   created_at: z.date().readonly(),
   updated_at: z.date().readonly().optional(),
+  extra_column_1: z.string().optional(),
+  extra_column_2: z.string().optional(),
+  extra_column_3: z.string().optional(),
+  extra_column_4: z.string().optional(),
+  extra_column_5: z.string().optional(),
 })
 
 const InsertProductSchema = ProductSchema.omit({ id: true, created_at: true, updated_at: true })
@@ -46,106 +51,70 @@ const InsertProductSchema = ProductSchema.omit({ id: true, created_at: true, upd
 export type Product = z.infer<typeof ProductSchema>
 export type InsertProduct = z.infer<typeof InsertProductSchema>
 
-export const columns: ColumnDef<Product>[] = [
-  ...getDefaultColumns<Product>(),
-  {
-    header: 'ID',
-    accessorKey: 'id',
-    enableHiding: false,
-    enableColumnFilter: false,
-  },
-  {
-    header: 'Name',
-    accessorKey: 'name',
-  },
-  {
-    header: 'Description',
-    accessorKey: 'description',
-    size: 800,
-    maxSize: 800,
-  },
-  {
-    header: 'Price',
-    accessorKey: 'price',
-    cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("price"))
-      const formatted = new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      }).format(amount)
-
-      return (
-        <div className="font-medium">
-          {formatted}
-        </div>
-      )
-    },
-  },
-  {
-    header: 'Stock Quantity',
-    accessorKey: 'stock_quantity',
-  },
-  {
-    header: 'Category',
-    accessorKey: 'category',
-  },
-  {
-    header: 'SKU',
-    accessorKey: 'sku',
-  },
-  {
-    header: 'ExtraColumn1',
-    accessorKey: 'extraColumn1',
-    enableColumnFilter: false,
-  },
-  {
-    header: 'ExtraColumn2',
-    accessorKey: 'extraColumn2',
-    enableColumnFilter: false,
-  },
-  {
-    header: 'ExtraColumn3',
-    accessorKey: 'extraColumn3',
-    enableColumnFilter: false,
-  },
-  {
-    header: 'ExtraColumn4',
-    accessorKey: 'extraColumn4',
-    enableColumnFilter: false,
-    
-  },
-  {
-    header: 'ExtraColumn5',
-    accessorKey: 'extraColumn5',
-    enableColumnFilter: false,
-  },
-  {
-    header: 'ExtraColumn6',
-    accessorKey: 'extraColumn6',
-    enableColumnFilter: false,
-  },
-  {
-    header: 'ExtraColumn7',
-    accessorKey: 'extraColumn7',
-    enableColumnFilter: false,
-  },
-  {
-    header: 'ExtraColumn8',
-    accessorKey: 'extraColumn8',
-    enableColumnFilter: false,
-  },
-  {
-    header: 'ExtraColumn9',
-    accessorKey: 'extraColumn9', 
-    enableColumnFilter: false, 
-  },
-  {
-    header: 'ExtraColumn10',
-    accessorKey: 'extraColumn10',
-    enableColumnFilter: false,
-  }
-]
-
+export function getProductColumns() {
+  const columnHelper = createColumnHelper<Product>()
+  return [
+    getActionColumn<Product>(),
+    columnHelper.accessor('id', { 
+      header: 'ID',
+      enableHiding: false,
+      enableColumnFilter: false,
+    }),
+    columnHelper.accessor('name', { 
+      header: 'Name',
+    }),
+    columnHelper.accessor('description', { 
+      header: 'Description',
+      size: 800,
+      maxSize: 800,
+    }),
+    columnHelper.accessor('price', { 
+      header: 'Price',
+      cell: ({ row }) => {
+        const amount = parseFloat(row.getValue("price"))
+        const formatted = new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: "USD",
+        }).format(amount)
+  
+        return (
+          <div className="font-medium">
+            {formatted}
+          </div>
+        )
+      },
+    }),
+    columnHelper.accessor('stock_quantity', { 
+      header: 'Stock Quantity',
+    }),
+    columnHelper.accessor('category', { 
+      header: 'Category',
+    }),
+    columnHelper.accessor('sku', { 
+      header: 'SKU',
+    }),
+    columnHelper.accessor('extra_column_1', { 
+      header: 'ExtraColumn1',
+      enableColumnFilter: false,
+    }),
+    columnHelper.accessor('extra_column_2', { 
+      header: 'ExtraColumn2',
+      enableColumnFilter: false,
+    }),
+    columnHelper.accessor('extra_column_3', { 
+      header: 'ExtraColumn3',
+      enableColumnFilter: false,
+    }),
+    columnHelper.accessor('extra_column_4', { 
+      header: 'ExtraColumn4',
+      enableColumnFilter: false,
+    }),
+    columnHelper.accessor('extra_column_5', { 
+      header: 'ExtraColumn5',
+      enableColumnFilter: false,
+    }),
+  ]
+}
 interface EditProductProps {
   mutationFn: (data: InsertProduct) => Promise<void> | void
 }

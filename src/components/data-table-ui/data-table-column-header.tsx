@@ -110,10 +110,13 @@ export function DataTableColumnHeader<TData, TValue>({
           }
           </DropdownMenuSub>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => header.column.toggleVisibility(false)}>
-            <EyeNoneIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
-            Hide
-          </DropdownMenuItem>
+          {
+            header.column.getCanHide() &&
+            <DropdownMenuItem onClick={() => header.column.toggleVisibility(false)}>
+              <EyeNoneIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
+              Hide
+            </DropdownMenuItem>
+          }
         </DropdownMenuContent>
       </DropdownMenu>
       { header.column.getIsPinned() ? <PinIcon color={pinColor} className="h-4 w-4 absolute top-1 right-1" /> : null }

@@ -1,4 +1,4 @@
-import { useState, type Dispatch, HTMLAttributes, useCallback, useMemo } from "react";
+import { useState, HTMLAttributes, useCallback, useMemo } from "react";
 import {
   CheckIcon,
 } from "lucide-react";
@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/command";
 import { MixerHorizontalIcon } from "@radix-ui/react-icons";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ColumnDef, VisibilityState } from "@tanstack/react-table";
+import { ColumnDef, TableOptions, VisibilityState } from "@tanstack/react-table";
 import { CustomTableState, SetTableState } from "@/components/data-table";
 
 /**
@@ -30,7 +30,7 @@ import { CustomTableState, SetTableState } from "@/components/data-table";
 interface TableViewOptionsProps<TData>
   extends HTMLAttributes<HTMLDivElement>
 {
-  columns: ColumnDef<TData, unknown>[]
+  columns: TableOptions<TData>['columns']
   setColumnVisibility: SetTableState<'columnVisibility'>
   columnVisibilityState: CustomTableState['columnVisibility']
   /**
@@ -49,7 +49,7 @@ export function TableViewOptions<TData>({
   className,
 }: TableViewOptionsProps<TData> ) { 
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-    const filteredColumns = useMemo(() => columns.filter((column) => (!column.meta?.isUtilityColumn && (column.enableHiding === undefined || column.enableHiding === true))), [columns])
+    const filteredColumns = useMemo(() => columns.filter((column) => (column.enableHiding === undefined || column.enableHiding === true)), [columns])
 
     const toggleOption = (value: VisibilityState) => {
       setColumnVisibility({ columnVisibility: { ...value } })

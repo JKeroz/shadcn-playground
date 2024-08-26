@@ -1,13 +1,13 @@
 'use client'
 import { 
   Cell, 
-  Column, 
-  ColumnDef,
+  Column,
   Updater,
   flexRender, 
   getCoreRowModel, 
   useReactTable,
-  TableState
+  TableState,
+  TableOptions,
 } from '@tanstack/react-table';
 import {
   Table,
@@ -17,18 +17,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuShortcut,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu"
 import { DataTableScrollArea } from '@/components/data-table-ui/data-table-scroll-area';
 import { DataTableColumnHeader } from '@/components/data-table-ui/data-table-column-header';
 import { CSSProperties, Dispatch, useCallback } from 'react';
 import { Separator } from '@/components/ui/separator';
-import { QueryParamFilter } from '@/lib/validation/data-table-query-params';
 
 export type SetStateTypeEvents = 'onColumnVisibilityChange' | 'onColumnPinningChange' | 'onPaginationChange' | 'onRowSelectionChange' | 'onColumnFiltersChange'
 
@@ -45,8 +37,8 @@ export type TableUpdaterActionProps<TKey extends keyof TableState | void = void,
       ? { [K in keyof TableState]?: Updater<TableState[K]> }
       : { [K in keyof TableState]?: Updater<TUpdater> }
 
-export type CustomTableState<TUpdaterData extends TableState = TableState> = {
-  [K in keyof TableState]?: K extends 'columnFilters' ? TUpdaterData[K] | QueryParamFilter[] : TUpdaterData[K]
+export type CustomTableState<TUpdaterData extends TableState | unknown = TableState> = {
+  [K in keyof TableState]?: TUpdaterData extends TableState ? TUpdaterData[K] : TUpdaterData;
 }
 
 export type TableUpdaterProps<
@@ -72,12 +64,14 @@ export type SetTableState<
 export 
 
 interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[]
+  columns: TableOptions<TData>['columns']
   data: TData[]
-  state?: CustomTableState
+  state: CustomTableState
+  initialState?: CustomTableState
   setColumnVisibility?: SetTableState<'columnVisibility'> | SetTableState<'columnVisibility', 'onColumnVisibilityChange'>
   setRowSelection?: SetTableState<'rowSelection'> | SetTableState<'rowSelection', 'onRowSelectionChange'>
   setColumnPinning?: SetTableState<'columnPinning'> | SetTableState<'columnPinning', 'onColumnPinningChange'>
+  singleRowSelection?: boolean
   viewPortClassName?: string
   isLoading?: boolean
   isFetching?: boolean
@@ -86,7 +80,7 @@ interface DataTableProps<TData, TValue> {
 function getCommonPinningStyles<TData>(column: Column<TData>, cell?: Cell<TData, unknown>): CSSProperties {
   // console.log('COLUMN', { column: column.id, size: column.getSize(), minSize: column.columnDef.minSize, maxSize: column.columnDef.maxSize })
   const isPinned = column.getIsPinned()
-  const isUtilityColumn = column.columnDef.meta?.isUtilityColumn
+  const isUtilityColumn = column.columnDef.meta && 'isUtilityColumn' in column.columnDef.meta
   const isLastLeftPinnedColumn =
     isPinned === 'left' && column.getIsLastColumn('left')
   const isFirstRightPinnedColumn =
@@ -128,9 +122,11 @@ export function DataTableControlled<TData, TValue>({
   setColumnPinning,
   setRowSelection,
   setColumnVisibility,
+  singleRowSelection,
   isLoading,
   isFetching
 }: DataTableProps<TData, TValue>) {  
+  
   const table = useReactTable({
     data: data ?? [],
     columns: columns,
@@ -147,22 +143,16 @@ export function DataTableControlled<TData, TValue>({
 
   // Set custom state to table
   table.setOptions((prev) => {
-    if (state) {
-      if (state.rowSelection) prev.state.rowSelection = state.rowSelection
-      if (state.columnVisibility) prev.state.columnVisibility = state.columnVisibility
-      if (state.columnPinning) prev.state.columnPinning = state.columnPinning
-      if (state.columnFilters) prev.state.columnFilters = state.columnFilters
-      if (state.pagination) prev.state.pagination = state.pagination
+    // Set custom state
+    if (state) { 
+      prev.state = { ...prev.state, ...state }
     }
     
     if (setRowSelection) prev.onRowSelectionChange = (updater) => setRowSelection({ type: 'onRowSelectionChange', rowSelection: updater })
     // Set row visibility state managers
-    // if (columnVisibility) prev.state.columnVisibility = columnVisibility
-    if (setColumnVisibility) prev.onColumnVisibilityChange = (updater) => {
-      setColumnVisibility({ type: 'onColumnVisibilityChange', columnVisibility: updater })
-    }
+    if (setColumnVisibility) prev.onColumnVisibilityChange = (updater) => setColumnVisibility({ type: 'onColumnVisibilityChange', columnVisibility: updater })
     // Set column pinning state managers
-    // if (setColumnPinning) prev.onColumnPinningChange = (updater) => setColumnPinning({ type: 'onColumnPinningChange', columnPinning: updater })
+    if (setColumnPinning) prev.onColumnPinningChange = (updater) => setColumnPinning({ type: 'onColumnPinningChange', columnPinning: updater })
     
     return prev
   })
@@ -248,40 +238,14 @@ export function DataTableControlled<TData, TValue>({
                       key={row.id}
                       data-state={row.getIsSelected() && "selected"}
                       onDoubleClick={() => {
-                        row.toggleSelected(!row.getIsSelected()) 
-                        // // Single row selection 
-                        // table.getRowModel().rows.map((r) => r.id === row.id ? r.toggleSelected(!r.getIsSelected()) : r.toggleSelected(false))
+                        if (singleRowSelection) {
+                          table.getRowModel().rows.map((r) => r.id === row.id ? r.toggleSelected(!r.getIsSelected()) : r.toggleSelected(false))
+                        } else {
+                          row.toggleSelected(!row.getIsSelected()) 
+                        }
                       }}
                     >
                       {row.getVisibleCells().map((cell) => (
-                        // <ContextMenu key={cell.id}>
-                        //   <ContextMenuTrigger asChild>
-                        //     {/*Add row border here --> border-r last:border-r-0 */}
-                        //     <TableCell className="" key={cell.id} style={{ ...getCommonPinningStyles(cell.column, cell) }}>
-                        //       {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        //     </TableCell>
-                        //   </ContextMenuTrigger>
-                        //   <ContextMenuContent className="w-48">
-                        //     <ContextMenuItem 
-                        //       inset
-                        //       onClick={() => row.toggleSelected(!row.getIsSelected())}
-                        //     >
-                        //       { 
-                        //         row.getIsSelected() 
-                        //         ? <>Deselect Row</>
-                        //         : <>Select Row</>
-                        //       }
-                        //       <ContextMenuShortcut>⌘K</ContextMenuShortcut>
-                        //     </ContextMenuItem>
-                        //     <ContextMenuItem 
-                        //       inset
-                        //       onClick={() => navigator.clipboard.writeText(String(cell.getValue()))}
-                        //     >
-                        //       Copy Cell Content
-                        //       {/* <ContextMenuShortcut>⌘]</ContextMenuShortcut> */}
-                        //     </ContextMenuItem>
-                        //   </ContextMenuContent>
-                        // </ContextMenu>
                         <TableCell 
                           className="" 
                           key={cell.id} 
