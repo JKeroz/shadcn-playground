@@ -210,7 +210,7 @@ export function DataTableControlled<TData, TValue>({
             width: table.getTotalSize() < 1800 ? '100%' : table.getTotalSize()
           }}
         >
-          <TableHeader className="sticky top-0 w-90 z-10 bg-background">
+          <TableHeader className="sticky top-0 w-90 bg-background">
             {
               table.getHeaderGroups().map((headerGroup) => (
               <TableRow className="border-separate hover:bg-background" key={headerGroup.id}>

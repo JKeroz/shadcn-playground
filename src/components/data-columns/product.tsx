@@ -1,7 +1,7 @@
 "use client"
 
 import { createColumnHelper } from "@tanstack/react-table"
-import { getActionColumn } from "@/components/data-table-ui/actions";
+import { getActionsColumn } from "@/components/data-table-ui/data-table-actions-column";
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -54,7 +54,7 @@ export type InsertProduct = z.infer<typeof InsertProductSchema>
 export function getProductColumns() {
   const columnHelper = createColumnHelper<Product>()
   return [
-    getActionColumn<Product>(),
+    getActionsColumn<Product>(),
     columnHelper.accessor('id', { 
       header: 'ID',
       enableHiding: false,

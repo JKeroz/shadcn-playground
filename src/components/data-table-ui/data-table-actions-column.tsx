@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { createColumnHelper } from "@tanstack/react-table"
 
-export function getActionColumn<TData>() {
+export function getActionsColumn<TData>() {
   return createColumnHelper<TData>().display(
     {
       id: 'actions',
