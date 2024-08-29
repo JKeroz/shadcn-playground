@@ -102,7 +102,9 @@ export function TableViewOptions<TData>({
             )}
           >
             <MixerHorizontalIcon className="h-3.5 w-3.5" />
-            View
+            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+              View
+            </span>
           </Button>
         </PopoverTrigger>
           <PopoverContent
